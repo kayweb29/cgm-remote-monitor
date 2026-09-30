@@ -34,10 +34,11 @@
 [coverage-url]: https://coveralls.io/r/nightscout/cgm-remote-monitor?branch=master
 [discord-img]: https://img.shields.io/discord/629952586895851530?label=discord%20chat
 [discord-url]: https://discord.gg/rTKhrqz
+[example-env-template]: docs/example-template.env
 
 ## Translations
 
-Please visit our [project in Crowdin](https://crowdin.com/project/nightscout) to translate Nigthscout. If you want to add a new language, please get in touch with the dev team in [Discord][discord-url].
+Please visit our [project in Crowdin](https://crowdin.com/project/nightscout) to translate Nightscout. If you want to add a new language, please get in touch with the dev team in [Discord][discord-url].
 
 ## Installation for development
 
@@ -49,7 +50,7 @@ Nightscout is a Node.js application. The basic installation of the software for 
    dependency installation has to be done using a non-root user - _do not use root_ for development and hosting
    the software!
 3. Get a Mongo database by either installing Mongo locally, or get a free cloud account from mLab or MongoDB Atlas.
-4. Configure Nightscout by copying `my.env.template` to `my.env` and run it - see the next chapter in the instructions
+4. Configure Nightscout by copying [`docs/example-template.env`][example-env-template] to `my.env` and run it - see the next chapter in the instructions
 
 ## Develop on `dev`
 
@@ -57,7 +58,7 @@ We develop on the `dev` branch. All new pull requests should be targeted to `dev
 
 You can get the `dev` branch checked out using `git checkout dev`.
 
-Once checked out, install the dependencies using `npm install`, then copy the included `my.env.template`file to `my.env` and edit the file to include your settings (like the Mongo URL). Leave the `NODE_ENV=development` line intact. Once set, run the site using `npm run dev`. This will start Nightscout in the development mode, with different code packaging rules and automatic restarting of the server using nodemon, when you save changed files on disk. The client also hot-reloads new code in, but it's recommended to reload the website after changes due to the way the plugin sandbox works.
+Once checked out, install the dependencies using `npm install`, then copy the included  [`docs/example-template.env`][example-env-template] to `my.env` file to `my.env` and edit the file to include your settings (like the Mongo URL). Leave the `NODE_ENV=development` line intact. Once set, run the site using `npm run dev`. This will start Nightscout in the development mode, with different code packaging rules and automatic restarting of the server using nodemon, when you save changed files on disk. The client also hot-reloads new code in, but it's recommended to reload the website after changes due to the way the plugin sandbox works.
 
 Note the template sets `INSECURE_USE_HTTP` to `true` to enable the site to work over HTTP in local development.
 
@@ -140,6 +141,69 @@ We use git-flow, with `master` as our production, stable branch, and `dev` is us
 Once `dev` has been reviewed and people feel it's time to release, we follow the git-flow release process, which creates a new tag and bumps the version correctly.  See sem-ver for versioning strategy.
 
 Every commit is tested by travis.  We encourage adding tests to validate your design.  We encourage discussing your use cases to help everyone get a better understanding of your design.
+
+## Running Tests Locally
+
+Tests **require** `NODE_ENV=test` to protect production databases from accidental destruction. If this variable is not set, tests will refuse to run and exit with an error.
+
+```bash
+# Run all tests
+NODE_ENV=test npm test
+
+# Run only unit tests (parallel, fast)
+NODE_ENV=test npm run test:unit
+
+# Run only integration tests (sequential, needs MongoDB)
+NODE_ENV=test npm run test:integration
+
+# Run specific test files
+NODE_ENV=test npm test -- --grep "treatments"
+```
+
+### Advanced Test Scripts
+
+For diagnosing test issues and ensuring reliability:
+
+```bash
+# Run stress tests for concurrent write operations
+NODE_ENV=test npm run test:stress
+
+# Detect flaky tests by running multiple iterations
+NODE_ENV=test npm run test:flaky           # Default iterations
+NODE_ENV=test npm run test:flaky:quick     # 3 iterations
+NODE_ENV=test npm run test:flaky:thorough  # 20 iterations
+
+# Run specific flaky test harnesses
+NODE_ENV=test npm run test:flaky:entries   # Entries isolation tests
+NODE_ENV=test npm run test:flaky:socket    # Socket isolation tests
+
+# Enable timing warnings to find slow tests
+NODE_ENV=test npm run test:timing
+```
+
+You can create a `my.test.env` file based on `ci.test.env` for local testing:
+
+```bash
+source my.test.env && npm test
+```
+
+### Test Environment Variables
+
+These variables control test behavior and MongoDB connection pooling:
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `NODE_ENV=test` | **Required** - Enables test mode, prevents production DB access | - |
+| `MONGO_POOL_SIZE` | MongoDB connection pool size | 5 |
+| `MONGO_MIN_POOL_SIZE` | Minimum pool connections to keep open | 0 |
+| `MONGO_MAX_IDLE_TIME_MS` | Max idle time (ms) before closing connection | 30000 |
+| `AUTH_FAIL_DELAY` | Delay (ms) after auth failure (test speedup) | 5000 |
+
+For CI or resource-constrained environments, adjust pool size:
+
+```bash
+MONGO_POOL_SIZE=3 MONGO_MIN_POOL_SIZE=1 npm test
+```
 
 ## Other Dev Tips
 
